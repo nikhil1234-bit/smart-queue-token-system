@@ -1,0 +1,13 @@
+---
+- hosts: dockerhost
+  tasks:
+    - name: Manage Smart Parking Container
+      community.docker.docker_container:
+        name: smart-parking-ansible
+        image: smart-parking-ci
+        state: "{{ container_state | default('started') }}"
+        restart_policy: unless-stopped
+        published_ports:
+          - "5001:5000"
+        volumes:
+          - "parking_data:/app/data"

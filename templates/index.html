@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Parking Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo">🅿️ Smart Parking System</div>
+        <nav>
+            <a href="/" class="active">Driver Portal</a>
+            <a href="/admin">Admin Dashboard</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <section class="hero">
+            <h1>Reserve Your Campus Parking Slot</h1>
+            <p>Select your slot, enter vehicle details, and confirm booking instantly.</p>
+        </section>
+
+        <section class="parking-section">
+            <h2>Available Parking Slots</h2>
+            <div class="slots-grid">
+                {% for slot in slots %}
+                <div class="slot-card {{ 'occupied' if slot.status == 'Occupied' else 'available' }}" onclick="selectSlot('{{ slot.id }}', {{ slot.price }}, '{{ slot.status }}')">
+                    <div class="slot-badge">{{ slot.type }}</div>
+                    <h3>Slot {{ slot.id }}</h3>
+                    <p class="price">₹{{ slot.price }}/hr</p>
+                    <span class="status-pill">{{ slot.status }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="booking-modal" id="bookingForm" style="display:none;">
+            <h2>Book Slot: <span id="selectedSlotId"></span></h2>
+            <form id="slotForm">
+                <div class="form-group">
+                    <label>Driver Name</label>
+                    <input type="text" id="driverName" placeholder="e.g. Nikhil Kumar B" required>
+                </div>
+                <div class="form-group">
+                    <label>Vehicle Number</label>
+                    <input type="text" id="vehicleNo" placeholder="e.g. TN-37-AB-1234" required>
+                </div>
+                <div class="form-group">
+                    <label>Duration (Hours)</label>
+                    <input type="number" id="duration" value="1" min="1" max="24" onchange="calculatePrice()">
+                </div>
+                <div class="total-price">
+                    Total Amount: ₹<span id="totalPrice">0</span>
+                </div>
+                <button type="button" class="btn-submit" onclick="submitBooking()">Confirm Booking</button>
+            </form>
+        </section>
+    </main>
+
+    <script>
+        let currentSlotPrice = 0;
+        let selectedSlot = '';
+
+        function selectSlot(slotId, price, status) {
+            if (status === 'Occupied') {
+                alert('This parking slot is already occupied!');
+                return;
+            }
+            selectedSlot = slotId;
+            currentSlotPrice = price;
+            document.getElementById('selectedSlotId').innerText = slotId;
+            document.getElementById('bookingForm').style.display = 'block';
+            calculatePrice();
+        }
+
+        function calculatePrice() {
+            const hrs = parseInt(document.getElementById('duration').value) || 1;
+            document.getElementById('totalPrice').innerText = currentSlotPrice * hrs;
+        }
+
+        function submitBooking() {
+            const driverName = document.getElementById('driverName').value;
+            const vehicleNo = document.getElementById('vehicleNo').value;
+            const duration = parseInt(document.getElementById('duration').value);
+
+            if (!driverName || !vehicleNo) {
+                alert('Please enter Driver Name and Vehicle Number.');
+                return;
+            }
+
+            fetch('/book_slot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    driver_name: driverName,
+                    vehicle_no: vehicleNo,
+                    slot_number: selectedSlot,
+                    duration: duration
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Booking Successful!\nBooking ID: #${data.booking_id}\nSlot: ${data.slot_number}\nTotal Paid: ₹${data.total_price}`);
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

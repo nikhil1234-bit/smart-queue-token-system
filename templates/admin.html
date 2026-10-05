@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Parking Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo">🅿️ Smart Parking System — Admin Panel</div>
+        <nav>
+            <a href="/">Driver Portal</a>
+            <a href="/admin" class="active">Admin Dashboard</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <section class="hero">
+            <h1>Vehicle Booking Records</h1>
+            <p>Monitored in SQLite Database (`parking.db` persistent volume)</p>
+        </section>
+
+        <section class="table-section">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Booking ID</th>
+                        <th>Driver Name</th>
+                        <th>Vehicle No</th>
+                        <th>Slot Number</th>
+                        <th>Duration (Hrs)</th>
+                        <th>Total Paid</th>
+                        <th>Status</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in bookings %}
+                    <tr>
+                        <td>#{{ b.id }}</td>
+                        <td>{{ b.driver_name }}</td>
+                        <td>{{ b.vehicle_no }}</td>
+                        <td><span class="slot-badge-sm">{{ b.slot_number }}</span></td>
+                        <td>{{ b.duration_hours }} hrs</td>
+                        <td>₹{{ b.total_price }}</td>
+                        <td><span class="status-active">{{ b.status }}</span></td>
+                        <td>{{ b.timestamp }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" style="text-align: center;">No active slot bookings found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </main>
+</body>
+</html>
