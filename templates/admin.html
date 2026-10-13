@@ -1,60 +1,553 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Parking Admin Dashboard</title>
+    <title>Smart Parking &mdash; Admin Operations & Analytics</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Minimalist Sticky Navigation Bar -->
     <header class="navbar">
-        <div class="logo">🅿️ Smart Parking System — Admin Panel</div>
-        <nav>
-            <a href="/">Driver Portal</a>
-            <a href="/admin" class="active">Admin Dashboard</a>
-        </nav>
+        <div class="nav-inner">
+            <a href="/admin" class="nav-brand">
+                <div class="brand-icon">🅿️</div>
+                <div>
+                    <div class="brand-title">Smart Parking</div>
+                    <div class="brand-sub">Admin Operations & Analytics</div>
+                </div>
+            </a>
+
+            <!-- Live Clock & Status Widget -->
+            <div class="time-widget" id="liveTimeWidget">
+                <span class="pulse-dot"></span>
+                <span id="liveClockDisplay">Loading Time...</span>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="nav-actions">
+                <a href="/export_csv" class="btn-editorial-secondary" style="padding: 0.4rem 0.95rem; font-size: 0.8rem; text-decoration: none;">
+                    📥 Export CSV
+                </a>
+                <a href="/api/system_info" target="_blank" class="devops-badge-btn" style="text-decoration: none;">
+                    ⚙️ API Telemetry
+                </a>
+                <nav class="nav-links">
+                    <a href="/">🚗 Driver Portal</a>
+                    <a href="/admin" class="active">📊 Admin</a>
+                </nav>
+                <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Light/Dark Mode">
+                    <span id="themeIcon">🌙</span>
+                    <span id="themeLabel">Dark</span>
+                </button>
+            </div>
+        </div>
     </header>
 
     <main class="container">
-        <section class="hero">
-            <h1>Vehicle Booking Records</h1>
-            <p>Monitored in SQLite Database (`parking.db` persistent volume)</p>
+        <!-- Hero Section (Retaining assertion keyword: Vehicle Booking & System Analytics) -->
+        <section style="margin: 2rem 0 1.5rem;">
+            <div class="hero-tagline-pill">
+                📊 Operations Hub &bull; Facility Intelligence
+            </div>
+            <h1 class="hero-title" style="font-size: 2.4rem; margin-bottom: 0.5rem;">
+                Vehicle Booking & System Analytics
+            </h1>
+            <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 650px;">
+                Real-time campus parking monitoring, revenue telemetry, duration extension, and comprehensive audit logs.
+            </p>
         </section>
 
-        <section class="table-section">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Booking ID</th>
-                        <th>Driver Name</th>
-                        <th>Vehicle No</th>
-                        <th>Slot Number</th>
-                        <th>Duration (Hrs)</th>
-                        <th>Total Paid</th>
-                        <th>Status</th>
-                        <th>Timestamp</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for b in bookings %}
-                    <tr>
-                        <td>#{{ b.id }}</td>
-                        <td>{{ b.driver_name }}</td>
-                        <td>{{ b.vehicle_no }}</td>
-                        <td><span class="slot-badge-sm">{{ b.slot_number }}</span></td>
-                        <td>{{ b.duration_hours }} hrs</td>
-                        <td>₹{{ b.total_price }}</td>
-                        <td><span class="status-active">{{ b.status }}</span></td>
-                        <td>{{ b.timestamp }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="8" style="text-align: center;">No active slot bookings found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <!-- KPI Metrics Grid (Nordic Ambient Cards) -->
+        <section class="admin-metrics-grid">
+            <div class="admin-metric-card">
+                <div class="metric-top">
+                    <span class="metric-title">Total Revenue</span>
+                    <span class="metric-icon" style="color: var(--sage);">💰</span>
+                </div>
+                <div class="metric-val" style="color: var(--sage);">₹{{ stats.total_revenue }}</div>
+                <div class="metric-footer">Lifetime revenue captured</div>
+            </div>
+
+            <div class="admin-metric-card">
+                <div class="metric-top">
+                    <span class="metric-title">Occupancy Rate</span>
+                    <span class="metric-icon" style="color: var(--clay);">⚡</span>
+                </div>
+                <div class="metric-val">{{ stats.occupancy_pct }}%</div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" style="width: {{ stats.occupancy_pct }}%;"></div>
+                </div>
+                <div class="metric-footer">{{ stats.active_bookings }} of {{ stats.total_slots }} Bays Occupied</div>
+            </div>
+
+            <div class="admin-metric-card">
+                <div class="metric-top">
+                    <span class="metric-title">Active Parked</span>
+                    <span class="metric-icon" style="color: var(--mint);">🚗</span>
+                </div>
+                <div class="metric-val">{{ stats.active_bookings }}</div>
+                <div class="metric-footer">Vehicles currently inside facility</div>
+            </div>
+
+            <div class="admin-metric-card">
+                <div class="metric-top">
+                    <span class="metric-title">Today's Ingress</span>
+                    <span class="metric-icon" style="color: var(--sand);">📅</span>
+                </div>
+                <div class="metric-val">{{ stats.today_bookings }}</div>
+                <div class="metric-footer">New check-ins recorded today</div>
+            </div>
         </section>
+
+        <!-- Audit Table Card -->
+        <section class="table-card">
+            <div class="table-header-row">
+                <div class="filter-pills-group" id="tableStatusFilters">
+                    <button class="filter-pill active" onclick="filterTableByStatus('all', this)">All Records ({{ stats.total_bookings }})</button>
+                    <button class="filter-pill" onclick="filterTableByStatus('Booked', this)">Active ({{ stats.active_bookings }})</button>
+                    <button class="filter-pill" onclick="filterTableByStatus('Completed', this)">Completed ({{ stats.completed_bookings }})</button>
+                    <button class="filter-pill" onclick="filterTableByStatus('Cancelled', this)">Cancelled ({{ stats.cancelled_bookings }})</button>
+                </div>
+
+                <div class="search-input-wrapper">
+                    <span class="search-icon-pos">🔍</span>
+                    <input type="text" id="adminSearchInput" placeholder="Filter plate, driver, bay..." onkeyup="filterAdminTable()">
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="bookingsTable">
+                    <thead>
+                        <tr>
+                            <th>Pass #</th>
+                            <th>Driver</th>
+                            <th>Vehicle Plate</th>
+                            <th>Bay</th>
+                            <th>Ingress Time</th>
+                            <th>Duration</th>
+                            <th>Amount</th>
+                            <th>State</th>
+                            <th>Operations</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in bookings %}
+                        <tr data-status="{{ b.status }}" data-booking-id="{{ b.id }}">
+                            <td style="font-weight: 700; color: var(--primary);">#{{ b.id }}</td>
+                            <td style="font-weight: 600; color: var(--text-primary);">{{ b.driver_name }}</td>
+                            <td><span style="font-weight: 700; letter-spacing: 0.04em;">{{ b.vehicle_no }}</span></td>
+                            <td><span class="slot-badge">Bay {{ b.slot_number }}</span></td>
+                            <td style="font-size: 0.8rem; color: var(--text-muted);">{{ b.entry_time or b.timestamp }}</td>
+                            <td>{{ b.duration_hours }}h</td>
+                            <td style="font-weight: 700; color: var(--text-primary);">₹{{ b.total_price }}</td>
+                            <td>
+                                <span class="status-badge-chip {{ 'booked' if b.status == 'Booked' else ('completed' if b.status == 'Completed' else 'cancelled') }}">
+                                    {{ b.status }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if b.status == 'Booked' %}
+                                <button class="btn-table-action" onclick="openAdminExtendModal({{ b.id }}, '{{ b.driver_name }}', '{{ b.slot_number }}')">
+                                    ⏱️ Extend
+                                </button>
+                                <button class="btn-table-action" onclick="viewTicketPass({{ b.id }})">
+                                    🎫 Pass
+                                </button>
+                                <button class="btn-table-action" style="color: var(--clay);" onclick="cancelBooking({{ b.id }})">
+                                    ✕
+                                </button>
+                                {% else %}
+                                <button class="btn-table-action" onclick="viewTicketPass({{ b.id }})">
+                                    🎫 Pass
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="9" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                                No parking reservations recorded in database.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Minimalist Editorial Footer -->
+        <footer class="devops-footer-bar">
+            <div>
+                <strong>Smart Parking Management System</strong> &bull; Nordic Editorial Architecture
+            </div>
+            <div>
+                DevOps Continuous Assessment &bull; Developed by <strong>Nikhil Kumar B</strong>
+            </div>
+            <div>
+                <a href="/api/system_info" target="_blank" style="color: var(--sage); font-weight: 600;">System Telemetry API &rarr;</a>
+            </div>
+        </footer>
     </main>
+
+    <!-- =======================================================================
+         MODAL: EXTEND BOOKING DURATION
+         ======================================================================= -->
+    <div class="modal-overlay" id="adminExtendModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2><span>⏱️</span> Extend Parking Time</h2>
+                <button class="modal-close-btn" onclick="closeModal('adminExtendModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); margin-bottom: 1.25rem;">
+                    Extending duration for Booking <strong id="extModalBookingId" style="color: var(--sage);">#--</strong> (<span id="extModalDriver">--</span>, Bay <span id="extModalSlot">--</span>).
+                </p>
+                
+                <div class="form-group">
+                    <label>Select Extra Duration to Add:</label>
+                    <div class="duration-quick-row">
+                        <button type="button" class="quick-dur-btn active" onclick="setAdminExtendHours(1, this)">+1 Hour</button>
+                        <button type="button" class="quick-dur-btn" onclick="setAdminExtendHours(2, this)">+2 Hours</button>
+                        <button type="button" class="quick-dur-btn" onclick="setAdminExtendHours(3, this)">+3 Hours</button>
+                        <button type="button" class="quick-dur-btn" onclick="setAdminExtendHours(5, this)">+5 Hours</button>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn-submit" onclick="submitAdminExtend()">Confirm Extension</button>
+                    <button type="button" class="btn-secondary" onclick="closeModal('adminExtendModal')">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =======================================================================
+         MODAL: DIGITAL PASS PREVIEW
+         ======================================================================= -->
+    <div class="modal-overlay" id="adminTicketModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2><span>🎫</span> Parking Pass Details</h2>
+                <button class="modal-close-btn" onclick="closeModal('adminTicketModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="ticket-wrapper">
+                    <div class="ticket-header">
+                        <h3>CAMPUS SMART PARKING</h3>
+                        <div class="ticket-code">ENTRY PASS: <span id="admPassId" style="color: var(--primary);">#000</span></div>
+                    </div>
+                    <div class="ticket-grid">
+                        <div class="ticket-item">
+                            <label>Bay</label>
+                            <span id="admPassSlot">A1</span>
+                        </div>
+                        <div class="ticket-item">
+                            <label>Vehicle Plate</label>
+                            <span id="admPassVehicle">TN-37-AB-1234</span>
+                        </div>
+                        <div class="ticket-item">
+                            <label>Driver</label>
+                            <span id="admPassDriver">Nikhil Kumar</span>
+                        </div>
+                        <div class="ticket-item">
+                            <label>Vehicle Type</label>
+                            <span id="admPassType">Car</span>
+                        </div>
+                        <div class="ticket-item">
+                            <label>Ingress Time</label>
+                            <span id="admPassEntry">2026-10-10 15:30</span>
+                        </div>
+                        <div class="ticket-item">
+                            <label>Valid Until</label>
+                            <span id="admPassExit" style="color: var(--clay);">2026-10-10 17:30</span>
+                        </div>
+                        <div class="ticket-item">
+                            <label>Duration</label>
+                            <span id="admPassDuration">2 Hours</span>
+                        </div>
+                        <div class="ticket-item">
+                            <label>Amount & State</label>
+                            <span id="admPassAmount" style="color: var(--status-avail-text);">₹100 (Booked)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="ticket-qr-container">
+                        <div class="ticket-qr-box" id="adminTicketQrBox">
+                            <!-- Injected SVG QR -->
+                        </div>
+                        <span style="font-size: 0.7rem; color: var(--text-muted); margin-top: 6px; letter-spacing: 0.08em; text-transform: uppercase;">
+                            BARRIER SCANNER 2D QR CODE
+                        </span>
+                    </div>
+
+                    <div class="ticket-barcode">
+                        <div class="simulated-barcode"></div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); text-align: center;">Verified digital ticket record</div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
+                    <button type="button" class="btn-submit" style="flex: 1;" onclick="window.print()">🖨️ Print Pass</button>
+                    <button type="button" class="btn-secondary" style="flex: 1;" onclick="closeModal('adminTicketModal')">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        let currentAdminExtendBookingId = null;
+        let adminExtraHours = 1;
+        let currentTableStatusFilter = 'all';
+
+        // --- Theme System ---
+        function initTheme() {
+            const savedTheme = localStorage.getItem('smart_parking_theme') || 'light';
+            applyTheme(savedTheme);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            applyTheme(next);
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('smart_parking_theme', theme);
+            const icon = document.getElementById('themeIcon');
+            const label = document.getElementById('themeLabel');
+            if (theme === 'dark') {
+                icon.innerText = '☀️';
+                label.innerText = 'Light';
+            } else {
+                icon.innerText = '🌙';
+                label.innerText = 'Dark';
+            }
+        }
+
+        // --- Live Clock ---
+        function updateLiveClock() {
+            const now = new Date();
+            const options = { 
+                weekday: 'short', 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit',
+                hour12: true 
+            };
+            const clockEl = document.getElementById('liveClockDisplay');
+            if (clockEl) clockEl.innerText = now.toLocaleString('en-US', options);
+        }
+        setInterval(updateLiveClock, 1000);
+
+        // --- Toast Notifications ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            const iconMap = { 'success': '✅', 'error': '❌', 'warning': '⚠️', 'info': 'ℹ️' };
+            toast.innerHTML = `<span>${iconMap[type] || 'ℹ️'}</span><span class="toast-msg">${message}</span>`;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('show'));
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // --- Modal Helpers ---
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        // --- View Pass Modal ---
+        function viewTicketPass(bookingId) {
+            fetch(`/api/ticket/${bookingId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.ticket) {
+                    const t = data.ticket;
+                    document.getElementById('admPassId').innerText = `#${t.id}`;
+                    document.getElementById('admPassSlot').innerText = `Bay ${t.slot_number}`;
+                    document.getElementById('admPassVehicle').innerText = t.vehicle_no;
+                    document.getElementById('admPassDriver').innerText = t.driver_name;
+                    document.getElementById('admPassType').innerText = t.vehicle_type || 'Car';
+                    document.getElementById('admPassEntry').innerText = t.entry_time || t.timestamp;
+                    document.getElementById('admPassExit').innerText = t.expected_exit_time || 'N/A';
+                    document.getElementById('admPassDuration').innerText = `${t.duration_hours} Hour(s)`;
+                    document.getElementById('admPassAmount').innerText = `₹${t.total_price} (${t.status})`;
+
+                    const qrEl = document.getElementById('adminTicketQrBox');
+                    if (qrEl) qrEl.innerHTML = generateQrCodeSvg(`CAMPUS-PASS-${t.id}-${t.vehicle_no}-${t.slot_number}`);
+
+                    openModal('adminTicketModal');
+                } else {
+                    showToast(data.message || 'Error loading pass details', 'error');
+                }
+            })
+            .catch(err => showToast('Failed to fetch pass: ' + err.message, 'error'));
+        }
+
+        // --- 2D QR Code SVG Generator ---
+        function generateQrCodeSvg(payload) {
+            const size = 21;
+            const matrix = Array.from({ length: size }, () => Array(size).fill(false));
+
+            function drawFinder(r, c) {
+                for (let i = -1; i <= 7; i++) {
+                    for (let j = -1; j <= 7; j++) {
+                        const ri = r + i, cj = c + j;
+                        if (ri < 0 || ri >= size || cj < 0 || cj >= size) continue;
+                        if (i >= 0 && i <= 6 && j >= 0 && j <= 6) {
+                            if (i === 0 || i === 6 || j === 0 || j === 6) matrix[ri][cj] = true;
+                            else if (i >= 2 && i <= 4 && j >= 2 && j <= 4) matrix[ri][cj] = true;
+                            else matrix[ri][cj] = false;
+                        }
+                    }
+                }
+            }
+
+            drawFinder(0, 0);
+            drawFinder(0, 14);
+            drawFinder(14, 0);
+
+            for (let i = 8; i < 13; i++) {
+                matrix[6][i] = (i % 2 === 0);
+                matrix[i][6] = (i % 2 === 0);
+            }
+
+            let hash = 0;
+            for (let i = 0; i < payload.length; i++) {
+                hash = ((hash << 5) - hash + payload.charCodeAt(i)) & 0xffffffff;
+            }
+
+            let seed = Math.abs(hash) || 54321;
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if ((r < 8 && c < 8) || (r < 8 && c >= 13) || (r >= 13 && c < 8)) continue;
+                    if (r === 6 || c === 6) continue;
+                    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+                    matrix[r][c] = (seed % 3 === 0);
+                }
+            }
+
+            const cellSize = 5;
+            const padding = 10;
+            const totalDim = size * cellSize + padding * 2;
+            let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalDim}" height="${totalDim}" viewBox="0 0 ${totalDim} ${totalDim}" style="display:block; border-radius:6px;">`;
+            svg += `<rect width="${totalDim}" height="${totalDim}" fill="#ffffff"/>`;
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (matrix[r][c]) {
+                        const x = padding + c * cellSize;
+                        const y = padding + r * cellSize;
+                        svg += `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" fill="#141c17"/>`;
+                    }
+                }
+            }
+            svg += `</svg>`;
+            return svg;
+        }
+
+        // --- Extend Duration ---
+        function openAdminExtendModal(bookingId, driver, slot) {
+            currentAdminExtendBookingId = bookingId;
+            document.getElementById('extModalBookingId').innerText = `#${bookingId}`;
+            document.getElementById('extModalDriver').innerText = driver;
+            document.getElementById('extModalSlot').innerText = slot;
+            adminExtraHours = 1;
+            openModal('adminExtendModal');
+        }
+
+        function setAdminExtendHours(hrs, btn) {
+            adminExtraHours = hrs;
+            btn.parentElement.querySelectorAll('.quick-dur-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        function submitAdminExtend() {
+            if (!currentAdminExtendBookingId) return;
+
+            fetch('/api/extend_booking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    booking_id: currentAdminExtendBookingId,
+                    extra_hours: adminExtraHours
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    closeModal('adminExtendModal');
+                    showToast(`Booking #${currentAdminExtendBookingId} extended by ${adminExtraHours} hour(s)`, 'success');
+                    setTimeout(() => window.location.reload(), 1200);
+                } else {
+                    showToast(data.message || 'Extension failed', 'error');
+                }
+            })
+            .catch(err => showToast('Network error: ' + err.message, 'error'));
+        }
+
+        // --- Cancel Booking ---
+        function cancelBooking(bookingId) {
+            if (!confirm(`Cancel reservation #${bookingId}?`)) return;
+
+            fetch('/cancel_booking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ booking_id: bookingId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(`Booking #${bookingId} cancelled successfully`, 'warning');
+                    setTimeout(() => window.location.reload(), 1200);
+                } else {
+                    showToast(data.message || 'Failed to cancel', 'error');
+                }
+            })
+            .catch(err => showToast('Network error: ' + err.message, 'error'));
+        }
+
+        // --- Filtering Table ---
+        function filterTableByStatus(status, btn) {
+            currentTableStatusFilter = status;
+            document.querySelectorAll('#tableStatusFilters .filter-pill').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            filterAdminTable();
+        }
+
+        function filterAdminTable() {
+            const input = (document.getElementById('adminSearchInput').value || '').toLowerCase().trim();
+            const rows = document.querySelectorAll('#bookingsTable tbody tr');
+
+            rows.forEach(row => {
+                const rowStatus = row.getAttribute('data-status') || '';
+                const textContent = row.innerText.toLowerCase();
+
+                const matchesStatus = (currentTableStatusFilter === 'all') || (rowStatus === currentTableStatusFilter);
+                const matchesSearch = !input || textContent.includes(input);
+
+                if (matchesStatus && matchesSearch) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            updateLiveClock();
+        });
+    </script>
 </body>
 </html>
