@@ -601,4 +601,13 @@ def admin():
     return render_template('admin.html', bookings=bookings, stats=stats)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    import threading
+    from werkzeug.serving import run_simple
+
+    # Concurrently serve on Port 5001 (Docker/Ansible mapped port) and Port 5000
+    t = threading.Thread(target=lambda: run_simple('0.0.0.0', 5001, app, threaded=True), daemon=True)
+    t.start()
+
+    app.run(host='0.0.0.0', port=5000, debug=False)
+
+
