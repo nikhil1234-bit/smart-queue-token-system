@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Queue & Token Management | DevOps Edition</title>
+  <meta name="description" content="Production-ready Smart Queue and Token Management System powered by Node.js, Express, MongoDB Atlas, Docker, GitHub Actions, and Render.">
+  
+  <!-- Modern Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <nav class="navbar" id="main-nav">
+    <div class="nav-container">
+      <div class="brand-wrapper">
+        <div class="brand-logo" id="brand-logo-icon">🎟️</div>
+        <div>
+          <div class="brand-title" id="brand-heading">QueueFlow DevOps</div>
+          <span class="brand-badge" id="brand-badge-version">v1.0.0 Production</span>
+        </div>
+      </div>
+
+      <!-- Navigation Views -->
+      <div class="nav-tabs" id="navigation-tabs" role="tablist">
+        <button class="nav-btn active" id="tab-btn-kiosk" data-tab="tab-kiosk">
+          <span>🎫</span> Kiosk (Take Token)
+        </button>
+        <button class="nav-btn" id="tab-btn-display" data-tab="tab-display">
+          <span>🖥️</span> Display Board (TV)
+        </button>
+        <button class="nav-btn" id="tab-btn-counter" data-tab="tab-counter">
+          <span>👨‍💼</span> Officer Desks
+        </button>
+        <button class="nav-btn" id="tab-btn-pipeline" data-tab="tab-pipeline">
+          <span>🚀</span> DevOps & Cloud
+        </button>
+      </div>
+
+      <!-- Live Database & Sound Toggles -->
+      <div class="system-status">
+        <div class="status-chip" id="db-connection-status" title="MongoDB Atlas / Realtime Engine">
+          <span class="status-dot" id="db-status-dot"></span>
+          <span id="db-status-text">Connected</span>
+        </div>
+        <button class="btn-audio" id="btn-toggle-sound" title="Enable/Disable Arrival Chime">
+          <span id="sound-icon">🔔</span> Chime: ON
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content Body -->
+  <main class="main-wrapper" id="app-container">
+
+    <!-- Top Real-Time Metrics Ribbon -->
+    <section class="metrics-ribbon" id="metrics-overview">
+      <div class="metric-card" id="metric-waiting-box">
+        <div class="metric-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">⏳</div>
+        <div class="metric-info">
+          <h4>Waiting in Queue</h4>
+          <div class="metric-value" id="metric-waiting-count">0</div>
+        </div>
+      </div>
+
+      <div class="metric-card" id="metric-serving-box">
+        <div class="metric-icon" style="background: rgba(6, 182, 212, 0.15); color: #06b6d4;">⚡</div>
+        <div class="metric-info">
+          <h4>Now Serving</h4>
+          <div class="metric-value" id="metric-serving-count">0</div>
+        </div>
+      </div>
+
+      <div class="metric-card" id="metric-completed-box">
+        <div class="metric-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">✅</div>
+        <div class="metric-info">
+          <h4>Completed Today</h4>
+          <div class="metric-value" id="metric-completed-count">0</div>
+        </div>
+      </div>
+
+      <div class="metric-card" id="metric-wait-time-box">
+        <div class="metric-icon" style="background: rgba(99, 102, 241, 0.15); color: #6366f1;">⏱️</div>
+        <div class="metric-info">
+          <h4>Est. Wait Time</h4>
+          <div class="metric-value" id="metric-avg-wait">0m</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==============================================
+         TAB 1: CUSTOMER SELF-SERVICE TOKEN KIOSK
+         ============================================== -->
+    <section class="tab-content active" id="tab-kiosk">
+      <div class="section-header">
+        <h2>Customer Token Kiosk</h2>
+        <p>Select your required service to generate your real-time queuing token slip.</p>
+      </div>
+
+      <div class="kiosk-grid">
+        <!-- Form Area -->
+        <div class="kiosk-card" id="kiosk-form-card">
+          <label style="font-size: 0.9rem; font-weight: 700; color: #a5b4fc;">STEP 1: SELECT YOUR SERVICE DEPARTMENT</label>
+          <div class="service-selector" id="service-options-container">
+            <div class="service-opt selected" data-service="General Inquiries" id="svc-opt-general">
+              <div class="svc-icon">ℹ️</div>
+              <div class="svc-title">General Inquiries</div>
+              <div class="svc-desc">Basic queries, guidance, information desk (Prefix A)</div>
+            </div>
+
+            <div class="service-opt" data-service="Account Services" id="svc-opt-accounts">
+              <div class="svc-icon">💼</div>
+              <div class="svc-title">Account Services</div>
+              <div class="svc-desc">Account openings, verifications, updates (Prefix B)</div>
+            </div>
+
+            <div class="service-opt" data-service="Cash & Billing" id="svc-opt-cash">
+              <div class="svc-icon">💳</div>
+              <div class="svc-title">Cash & Billing</div>
+              <div class="svc-desc">Payments, withdrawals, statement receipts (Prefix C)</div>
+            </div>
+
+            <div class="service-opt" data-service="Technical Support" id="svc-opt-tech">
+              <div class="svc-icon">🛠️</div>
+              <div class="svc-title">Technical Support</div>
+              <div class="svc-desc">Digital onboarding, app help, device support (Prefix T)</div>
+            </div>
+          </div>
+
+          <label style="font-size: 0.9rem; font-weight: 700; color: #a5b4fc; display: block; margin-top: 1.5rem; margin-bottom: 0.8rem;">STEP 2: CUSTOMER DETAILS (OPTIONAL)</label>
+          
+          <div class="form-group">
+            <label for="input-customer-name">Full Name</label>
+            <input type="text" id="input-customer-name" class="form-input" placeholder="e.g. John Doe (Optional)">
+          </div>
+
+          <div class="form-group">
+            <label for="input-customer-phone">Mobile Number (For SMS / WhatsApp Alert)</label>
+            <input type="tel" id="input-customer-phone" class="form-input" placeholder="e.g. +1 555-0199 (Optional)">
+          </div>
+
+          <label class="priority-checkbox" id="priority-check-wrapper">
+            <input type="checkbox" id="input-is-priority">
+            <div>
+              <strong style="color: #f59e0b;">Senior Citizen / Differently Abled / VIP Privilege</strong>
+              <div style="font-size: 0.78rem; color: var(--text-muted);">Gives prioritized ticket positioning in the queue dispatcher.</div>
+            </div>
+          </label>
+
+          <button class="btn-generate" id="btn-generate-token">
+            <span>🎟️</span> Generate Token Slip
+          </button>
+        </div>
+
+        <!-- Live Generated Token Slip Preview -->
+        <div class="ticket-preview-box" id="ticket-preview-wrapper">
+          <div class="ticket-slip" id="live-ticket-slip">
+            <div class="ticket-header">
+              <h3>QUEUEFLOW SERVICE</h3>
+              <p>Welcome • Please Take Your Seat</p>
+            </div>
+            
+            <div class="ticket-token-number" id="preview-token-number">A-101</div>
+            <div id="preview-priority-badge" style="font-size: 0.8rem; font-weight: 700; color: #6366f1;">STANDARD QUEUE</div>
+
+            <hr class="ticket-divider">
+
+            <div class="ticket-details">
+              <div class="ticket-row">
+                <span>Service Dept:</span>
+                <span id="preview-service-name">General Inquiries</span>
+              </div>
+              <div class="ticket-row">
+                <span>Customer:</span>
+                <span id="preview-customer-name">Guest Customer</span>
+              </div>
+              <div class="ticket-row">
+                <span>Time Issued:</span>
+                <span id="preview-issue-time">Just Now</span>
+              </div>
+              <div class="ticket-row">
+                <span>Est. Wait:</span>
+                <span id="preview-wait-time" style="color: #059669;">~4 mins</span>
+              </div>
+            </div>
+
+            <div class="ticket-qr" id="preview-qr-box">📱</div>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.5rem;">Scan on mobile or watch the Live TV Display Board</p>
+
+            <div class="ticket-actions">
+              <button class="btn-ticket-act" id="btn-print-slip" onclick="window.print()">🖨️ Print Slip</button>
+              <button class="btn-ticket-act" id="btn-copy-slip" onclick="navigator.clipboard && navigator.clipboard.writeText(document.getElementById('preview-token-number').innerText); alert('Token number copied!');">📋 Copy Token</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==============================================
+         TAB 2: LIVE DISPLAY BOARD (TV SCREEN MODE)
+         ============================================== -->
+    <section class="tab-content" id="tab-display">
+      <div class="display-board" id="main-display-board">
+        <div class="board-top">
+          <h2><span>📢</span> NOW SERVING</h2>
+          <div class="board-top-ticker" id="live-clock-ticker">00:00:00 PM</div>
+        </div>
+
+        <!-- Grid of 4 Counters -->
+        <div class="serving-grid" id="tv-serving-grid">
+          <!-- Dynamically populated -->
+        </div>
+
+        <!-- Waiting Ticker -->
+        <div class="queue-ticker-wrapper">
+          <div class="ticker-header">
+            <h4><span>👥</span> NEXT IN LINE (WAITING)</h4>
+            <span id="ticker-waiting-badge" style="font-size: 0.8rem; color: var(--accent-cyan); font-weight: 600;">0 waiting</span>
+          </div>
+          <div class="waiting-chips-container" id="waiting-chips-list">
+            <span style="color: var(--text-muted); font-size: 0.85rem;">No customers currently waiting. All counters clear!</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==============================================
+         TAB 3: COUNTER OFFICER DESK (CALL & SERVE)
+         ============================================== -->
+    <section class="tab-content" id="tab-counter">
+      <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+          <h2>Service Counter Desks</h2>
+          <p>Counter personnel can call next waiting token, sound audio announcement, or mark customer complete.</p>
+        </div>
+        <button class="btn-desk-secondary" id="btn-reset-queue-day" style="color: #f87171; border-color: rgba(248, 113, 113, 0.3);">
+          <span>🔄</span> Reset Shift / Clear Queue
+        </button>
+      </div>
+
+      <div class="counter-grid" id="officer-counters-grid">
+        <!-- Rendered via JS -->
+      </div>
+    </section>
+
+    <!-- ==============================================
+         TAB 4: DEVOPS PIPELINE & CLOUD ARCHITECTURE
+         ============================================== -->
+    <section class="tab-content" id="tab-pipeline">
+      <div class="section-header">
+        <h2>DevOps Architecture & Deployment Verification</h2>
+        <p>End-to-end continuous integration and continuous deployment stack specification.</p>
+      </div>
+
+      <div class="devops-pipeline-card">
+        <h3 style="font-family: var(--font-display); font-size: 1.35rem; margin-bottom: 0.5rem;">CI/CD Pipeline Stages</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Automated via GitHub Actions workflows and deployed live to Render Cloud.</p>
+
+        <div class="pipeline-steps">
+          <div class="pipeline-step">
+            <div class="step-num">1</div>
+            <h4>VS Code</h4>
+            <p>Node.js & Express REST API architecture with modular services and models.</p>
+          </div>
+          <div class="pipeline-step">
+            <div class="step-num">2</div>
+            <h4>Git & GitHub</h4>
+            <p>Version tracking, clean commits, pull request triggers, and branch policies.</p>
+          </div>
+          <div class="pipeline-step">
+            <div class="step-num">3</div>
+            <h4>GitHub Actions</h4>
+            <p>Automated Jest unit testing, security linting, and Docker container verification.</p>
+          </div>
+          <div class="pipeline-step">
+            <div class="step-num">4</div>
+            <h4>Docker Desktop</h4>
+            <p>Multi-stage unprivileged Alpine containerization with built-in healthchecks.</p>
+          </div>
+          <div class="pipeline-step">
+            <div class="step-num">5</div>
+            <h4>MongoDB Atlas</h4>
+            <p>Cloud NoSQL cluster storing queues, priority tokens, and desk metrics.</p>
+          </div>
+          <div class="pipeline-step">
+            <div class="step-num">6</div>
+            <h4>Render Cloud</h4>
+            <p>Zero-downtime automated deployment with render.yaml infrastructure blueprint.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="devops-pipeline-card">
+        <h3 style="font-family: var(--font-display); font-size: 1.35rem; margin-bottom: 0.5rem;">MongoDB Atlas Connection String Guide</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">To connect your MongoDB Atlas cluster, create a <code>.env</code> file in your project root or set the environment variable on Render:</p>
+
+        <pre class="env-config-block"><code># Environment Configuration (.env)
+PORT=3000
+NODE_ENV=production
+
+# MongoDB Atlas URI (Replace &lt;username&gt; and &lt;password&gt; with your MongoDB Atlas database user):
+MONGODB_URI=mongodb+srv://&lt;username&gt;:&lt;password&gt;@cluster0.mongodb.net/queue_db?retryWrites=true&w=majority
+
+# Docker Deployment Command:
+docker build -t queue-system:latest .
+docker run -p 3000:3000 -e PORT=3000 queue-system:latest</code></pre>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast Notifications Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

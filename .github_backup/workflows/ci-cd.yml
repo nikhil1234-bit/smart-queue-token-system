@@ -1,0 +1,80 @@
+name: CI/CD Pipeline - Smart Queue & Token Management
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # ==========================================
+  # STAGE 1: AUTOMATED TESTING & VERIFICATION
+  # ==========================================
+  test:
+    name: Run Automated Tests & Health Checks
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Execute Jest Test Suite
+        run: npm test -- --coverage
+        env:
+          NODE_ENV: test
+          PORT: 3000
+
+  # ==========================================
+  # STAGE 2: DOCKER CONTAINER IMAGE BUILD
+  # ==========================================
+  docker-build:
+    name: Build & Verify Docker Image
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: smart-queue-system:${{ github.sha }}
+
+  # ==========================================
+  # STAGE 3: AUTOMATED DEPLOYMENT TO RENDER
+  # ==========================================
+  deploy-to-render:
+    name: Trigger Render Deployment
+    needs: [test, docker-build]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy Hook Trigger
+        run: |
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            echo "🚀 Triggering Render Deploy Hook..."
+            curl -X POST -f "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+            echo "✅ Render deployment initiated successfully!"
+          else
+            echo "ℹ️ RENDER_DEPLOY_HOOK_URL secret not configured yet. Render will auto-deploy via GitHub integration."
+          fi

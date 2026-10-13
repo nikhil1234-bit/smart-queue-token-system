@@ -1,0 +1,20 @@
+# ==========================================
+# Render Blueprint Configuration (render.yaml)
+# ==========================================
+services:
+  - type: web
+    name: smart-queue-system
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: MONGODB_URI
+        sync: false

@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # Node.js Smart Queue Application
+  queue-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: queue-token-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      # To use MongoDB Atlas, set MONGODB_URI in your .env file
+      # Otherwise it connects to the local containerized MongoDB below
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongo:27017/queue_db}
+    depends_on:
+      - mongo
+    networks:
+      - queue-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Local MongoDB Container (For Local Testing in Docker Desktop)
+  mongo:
+    image: mongo:7.0
+    container_name: queue-mongo-db
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - queue-network
+
+networks:
+  queue-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
