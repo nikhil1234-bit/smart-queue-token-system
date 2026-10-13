@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "jest --runInBand --detectOpenHandles --forceExit"
+    "test": "jest --runInBand --detectOpenHandles --forceExit",
+    "test:ci": "jest --ci --runInBand --detectOpenHandles --forceExit --reporters=default --reporters=jest-junit"
   },
   "keywords": [
     "devops",
@@ -31,6 +32,7 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
+    "jest-junit": "^17.0.0",
     "supertest": "^7.0.0"
   },
   "engines": {

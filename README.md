@@ -103,6 +103,29 @@ git push -u origin main
 
 ---
 
+## 🏗️ Jenkins Enterprise CI/CD Pipeline
+
+A Declarative [`Jenkinsfile`](Jenkinsfile) is provided in the repository with complete automation:
+
+### Pipeline Stages:
+1. **1. Checkout Code**: Git SCM pull & commit audit.
+2. **2. Environment Verification**: Node.js, npm, and Docker runtime checks.
+3. **3. Install Dependencies**: `npm ci` / `npm install`.
+4. **4. Automated Testing & JUnit Reports**: Runs Jest suite with `jest-junit` XML report generation and test result archiving.
+5. **5. DevSecOps Security Audit**: `npm audit` dependency security scanning.
+6. **6. Docker Image Build**: Multi-stage build tagged with `${IMAGE_NAME}:${BUILD_NUMBER}` and `latest`.
+7. **7. Docker Smoke Test**: Launches test container on port 3001, executes live health checks against `/api/health`, and tears down cleanly.
+8. **8. Deploy to Target Environment**: Production deployment to Render or target cloud environment.
+
+### Run Jenkins Controller Locally (Optional):
+You can spin up a local Jenkins controller using the included [`docker-compose-jenkins.yml`](docker-compose-jenkins.yml):
+```bash
+docker compose -f docker-compose-jenkins.yml up -d
+```
+Open **[http://localhost:8080](http://localhost:8080)** to access your Jenkins dashboard.
+
+---
+
 ## ☁️ Deploying Online on Render
 
 ### Option A: Using Blueprint (`render.yaml`)
